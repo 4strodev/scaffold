@@ -33,6 +33,7 @@ type App struct {
 	container  wiring.Container
 	adapters   map[adapters.Adapter]struct{}
 	components map[components.Component]struct{}
+	logger     *slog.Logger
 }
 
 func (app *App) Start() error {
@@ -65,7 +66,7 @@ func (app *App) Start() error {
 
 	go func() {
 		for err := range errChannel {
-			log.Println(err)
+			app.logger.Error("error on adapter: {error}", "error", err.Error())
 		}
 	}()
 
@@ -83,7 +84,7 @@ func (app *App) AddAdapter(adapter adapters.Adapter) error {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("adapter %s initialized\n", reflect.TypeOf(adapter).Elem().String())
+	app.logger.Error("adapter {adapter} initialized", "adapter", reflect.TypeOf(adapter).Elem().String())
 
 	app.adapters[adapter] = struct{}{}
 
@@ -100,7 +101,7 @@ func (app *App) AddComponent(component components.Component) error {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("component %s initialized\n", reflect.TypeOf(component).Elem().String())
+	app.logger.Info("component {component} initialized\n", "component", reflect.TypeOf(component).Elem().String())
 
 	app.components[component] = struct{}{}
 
