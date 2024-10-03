@@ -1,4 +1,4 @@
-module github.com/4strodev/hello_api
+module github.com/4strodev/scaffold
 
 go 1.23.0
 

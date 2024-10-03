@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/4strodev/hello_api/pkg/core/adapters"
-	"github.com/4strodev/hello_api/pkg/core/components"
-	"github.com/4strodev/hello_api/pkg/core/lifecycle"
+	"github.com/4strodev/scaffold/pkg/core/adapters"
+	"github.com/4strodev/scaffold/pkg/core/components"
+	"github.com/4strodev/scaffold/pkg/core/lifecycle"
 	wiring "github.com/4strodev/wiring/pkg"
 )
 
@@ -21,7 +21,7 @@ func NewApp(container wiring.Container) *App {
 	return app
 }
 
-// App is an application where the components are attached
+// App is an application where the components and adapters are attached
 type App struct {
 	container  wiring.Container
 	adapters   map[adapters.Adapter]struct{}
