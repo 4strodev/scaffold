@@ -4,5 +4,7 @@ same agility that I program with other languages. With autowiring and even separ
 logic.
 
 ## Disclaimer
-This is an opinionated scaffold. This is for MY personal projects and this don't try to replace any go standard or
+- This is an opinionated scaffold. This is for MY personal projects and this don't try to replace any go standard or
 any idiomatic go recomendation/specification.
+
+- This is NOT a framework. It's a platform/protocol agnostic template for my projects.

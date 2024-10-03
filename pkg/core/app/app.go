@@ -2,7 +2,7 @@ package app
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"reflect"
 	"sync"
 
@@ -17,6 +17,13 @@ func NewApp(container wiring.Container) *App {
 		adapters:   make(map[adapters.Adapter]struct{}),
 		components: make(map[components.Component]struct{}),
 		container:  container,
+	}
+	if !container.HasType(reflect.TypeFor[slog.Logger]()) {
+		// Set default logger
+		container.Singleton(func() *slog.Logger {
+			logger := slog.New(slog.Default().Handler())
+			return logger
+		})
 	}
 	return app
 }

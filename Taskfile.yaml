@@ -1,0 +1,50 @@
+version: '3'
+
+vars:
+  NAME: server
+  TMP: tmp
+  SRC: ./cmd/{{ .NAME }}
+  BIN: ./bin/{{ .NAME }}
+
+tasks:
+  default:
+    desc: List available tasks
+    cmd: task --list-all
+
+  build:
+    desc: Build the application
+    cmd: go build -o {{ .BIN }} {{ .SRC }}
+
+  start:
+    desc: Start application in debug mode
+    deps:
+      - build
+    cmd: "{{ .BIN }}"
+
+  start:dev:
+    desc: Start the application in development mode
+    cmd: air -tmp_dir {{ .TMP }} -build.bin {{ .BIN }} -build.cmd "task build"
+
+  test:
+    desc: Execute tests
+    deps:
+      - mktmp
+    cmd: go test ./... -v -cover -coverprofile={{ .TMP }}/coverage.out {{ .CLI_ARGS }}
+
+  coverage:
+    desc: Shows on the browser the test coverage of the project
+    cmd: go tool cover -html={{ .TMP }}/coverage.out
+
+  test:coverage:
+    desc: Execute tests and show coverage
+    deps:
+      - test
+      - coverage
+
+  docs:
+    desc: show documentation as it will be rendered in go pkg site. It requires pkgiste to be installed
+    cmd: pkgsite {{.CLI_ARGS}} .
+
+  mktmp:
+    desc: Creates default temporary directory for temp files like coverage profile.
+    cmd: mkdir -p {{ .TMP }}
