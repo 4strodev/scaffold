@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"reflect"
 	"sync"
 
@@ -18,10 +19,15 @@ func NewApp(container wiring.Container) *App {
 		components: make(map[components.Component]struct{}),
 		container:  container,
 	}
-	if !container.HasType(reflect.TypeFor[slog.Logger]()) {
+	if container.HasType(reflect.TypeFor[*slog.Logger]()) {
+		var logger *slog.Logger
+		container.Resolve(&logger)
+		app.logger = logger
+	} else {
 		// Set default logger
+		logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+		app.logger = logger
 		container.Singleton(func() *slog.Logger {
-			logger := slog.New(slog.Default().Handler())
 			return logger
 		})
 	}
@@ -84,7 +90,7 @@ func (app *App) AddAdapter(adapter adapters.Adapter) error {
 	if err != nil {
 		panic(err)
 	}
-	app.logger.Error("adapter {adapter} initialized", "adapter", reflect.TypeOf(adapter).Elem().String())
+	app.logger.Info("adapter {adapter} initialized", "adapter", reflect.TypeOf(adapter).Elem().String())
 
 	app.adapters[adapter] = struct{}{}
 
