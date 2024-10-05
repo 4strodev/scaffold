@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -42,17 +43,20 @@ type App struct {
 	logger     *slog.Logger
 }
 
-func (app *App) Start() error {
+func (app *App) Start() (chan error, error) {
+	errorsChannel := make(chan error, len(app.adapters))
+	if len(app.adapters) == 0 {
+		return errorsChannel, errors.New("no adapters attached to the app")
+	}
 	// TODO it will be nice that the adapters has the ability to restart itself and do not affect other services
 	// for example if the REST API is down for some reason do not affect for example the grpc server
 	waitGroup := sync.WaitGroup{}
-	errChannel := make(chan error, len(app.adapters))
 	for adapter := range app.adapters {
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
 			err := adapter.Start()
-			errChannel <- err
+			errorsChannel <- err
 		}()
 	}
 
@@ -66,17 +70,28 @@ func (app *App) Start() error {
 
 		err := onStartHook.OnStart()
 		if err != nil {
-			return err
+			errorsChannel <- err
 		}
 	}
 
-	go func() {
-		for err := range errChannel {
-			app.logger.Error("error on adapter: {error}", "error", err.Error())
-		}
-	}()
-
 	waitGroup.Wait()
+	return errorsChannel, nil
+}
+
+func (app *App) Stop() error {
+	errs := make([]error, 0)
+	for adapter := range app.adapters {
+		err := adapter.Stop()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) != 0 {
+		// join errors
+		return errors.Join(errs...)
+	}
+
 	return nil
 }
 
