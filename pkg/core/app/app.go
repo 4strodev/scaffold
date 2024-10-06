@@ -38,11 +38,14 @@ func NewApp(container wiring.Container) *App {
 // App is an application where the components and adapters are attached
 type App struct {
 	container  wiring.Container
+	// adapters and components are a map because if at some point metadata is necessary,
+	// it will be easy to make the refactor
 	adapters   map[adapters.Adapter]struct{}
 	components map[components.Component]struct{}
 	logger     *slog.Logger
 }
 
+// Start starts the adapters and execute the lifecycle hooks of the attached components
 func (app *App) Start() (chan error, error) {
 	errorsChannel := make(chan error, len(app.adapters))
 	if len(app.adapters) == 0 {
@@ -78,6 +81,7 @@ func (app *App) Start() (chan error, error) {
 	return errorsChannel, nil
 }
 
+// Stop stops the adapters and shutdowns the application gracefully
 func (app *App) Stop() error {
 	errs := make([]error, 0)
 	for adapter := range app.adapters {
@@ -95,6 +99,7 @@ func (app *App) Stop() error {
 	return nil
 }
 
+// AddAdapter adds an adapter to the application
 func (app *App) AddAdapter(adapter adapters.Adapter) error {
 	_, exists := app.adapters[adapter]
 	if exists {
@@ -112,6 +117,7 @@ func (app *App) AddAdapter(adapter adapters.Adapter) error {
 	return nil
 }
 
+// AddComponent adds a component to the app
 func (app *App) AddComponent(component components.Component) error {
 	_, exists := app.components[component]
 	if exists {
