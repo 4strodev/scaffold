@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
 	"reflect"
 	"sync"
 
@@ -43,7 +44,7 @@ func NewApp(container wiring.Container) *App {
 
 // App is an application where the components and adapters are attached
 type App struct {
-	container  wiring.Container
+	container wiring.Container
 	// adapters and components are a map because if at some point metadata is necessary,
 	// it will be easy to make the refactor
 	adapters   map[adapters.Adapter]struct{}
@@ -52,10 +53,10 @@ type App struct {
 }
 
 // Start starts the adapters and execute the lifecycle hooks of the attached components
-func (app *App) Start() (chan error, error) {
+func (app *App) Start() error {
 	errorsChannel := make(chan error, len(app.adapters))
 	if len(app.adapters) == 0 {
-		return errorsChannel, errors.New("no adapters attached to the app")
+		return errors.New("no adapters attached to the app")
 	}
 	// TODO it will be nice that the adapters has the ability to restart itself and do not affect other services
 	// for example if the REST API is down for some reason do not affect for example the grpc server
@@ -83,8 +84,29 @@ func (app *App) Start() (chan error, error) {
 		}
 	}
 
+	go func() {
+		for err := range errorsChannel {
+			app.logger.Error(err.Error())
+		}
+	}()
+
+	app.handleShutdown()
 	waitGroup.Wait()
-	return errorsChannel, nil
+	close(errorsChannel)
+	return nil
+}
+
+func (a *App) handleShutdown() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, os.Kill)
+
+	go func() {
+		<-sigs
+		err := a.Stop()
+		if err != nil {
+			a.logger.Error(err.Error())
+		}
+	}()
 }
 
 // Stop stops the adapters and shutdowns the application gracefully
