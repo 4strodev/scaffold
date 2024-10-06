@@ -22,15 +22,21 @@ func NewApp(container wiring.Container) *App {
 	}
 	if container.HasType(reflect.TypeFor[*slog.Logger]()) {
 		var logger *slog.Logger
-		container.Resolve(&logger)
+		err := container.Resolve(&logger)
+		if err != nil {
+			panic(err)
+		}
 		app.logger = logger
 	} else {
 		// Set default logger
 		logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 		app.logger = logger
-		container.Singleton(func() *slog.Logger {
+		err := container.Singleton(func() *slog.Logger {
 			return logger
 		})
+		if err != nil {
+			panic(err)
+		}
 	}
 	return app
 }
