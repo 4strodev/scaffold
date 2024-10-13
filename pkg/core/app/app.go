@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"reflect"
 	"sync"
+	"syscall"
 
 	"github.com/4strodev/scaffold/pkg/core/adapters"
 	"github.com/4strodev/scaffold/pkg/core/components"
@@ -15,6 +16,9 @@ import (
 	wiring "github.com/4strodev/wiring/pkg"
 )
 
+// Creates a new app with the provided cotnainer. To customize the app logger
+// the container has to have a resolver for [*slog.Logger]. If a resolver does not exist then
+// a resolver will be added by the app.
 func NewApp(container wiring.Container) *App {
 	app := &App{
 		adapters:   make(map[adapters.Adapter]struct{}),
@@ -52,7 +56,9 @@ type App struct {
 	logger     *slog.Logger
 }
 
-// Start starts the adapters and execute the lifecycle hooks of the attached components
+// Start starts the adapters and execute the lifecycle hooks of the attached components.
+// Returns an error if there are no adapters on the app. Errors returned by the adapters
+// will be collected an returned in a single error.
 func (app *App) Start() error {
 	errorsChannel := make(chan error, len(app.adapters))
 	if len(app.adapters) == 0 {
@@ -71,34 +77,42 @@ func (app *App) Start() error {
 	}
 
 	for controller := range app.components {
+		err := controller.Init(app.container)
+		if err != nil {
+			return err
+		}
+
 		onStartHook, ok := controller.(lifecycle.OnStart)
 		if !ok {
 			continue
 		}
 
-		controller.Init(app.container)
-
-		err := onStartHook.OnStart()
+		err = onStartHook.OnStart()
 		if err != nil {
-			errorsChannel <- err
+			return err
 		}
 	}
 
+	var adaptersErrors []error
 	go func() {
 		for err := range errorsChannel {
-			app.logger.Error(err.Error())
+			adaptersErrors = append(adaptersErrors, err)
 		}
 	}()
 
 	app.handleShutdown()
 	waitGroup.Wait()
 	close(errorsChannel)
+	if len(adaptersErrors) != 0 {
+		return errors.Join(adaptersErrors...)
+	}
 	return nil
 }
 
+// handleShutdown setups signal notifiers and shutdowns the app if a signal is received from the os
 func (a *App) handleShutdown() {
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, os.Kill)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		<-sigs
