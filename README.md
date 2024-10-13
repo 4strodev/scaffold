@@ -10,5 +10,8 @@ any idiomatic go recomendation/specification.
 
 - This is NOT a framework. It's a platform/protocol agnostic template for my projects.
 
-## Example usage
+## Usage
+It can be used as a project template or as a dependency. The prefered way is to use it as a project template.
+
+### Example usage
 To see an example check the [fiber_example](https://github.com/4strodev/fiber_example)
